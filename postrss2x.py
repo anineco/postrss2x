@@ -47,7 +47,7 @@ cursor.execute("""
 CREATE TABLE IF NOT EXISTS record (
     link TEXT PRIMARY KEY, -- 記事のURL
     title TEXT NOT NULL,   -- タイトル
-    date TEXT NOT NULL,    -- 公開日（YYYY-MM-DD）
+    date TEXT NOT NULL,    -- 公開日（ISO8601）
     post_id INTEGER DEFAULT -1  -- 投稿ID
 )
 """)
@@ -65,7 +65,7 @@ namespaces = { "dc": "http://purl.org/dc/elements/1.1/" }
 for item in root.findall(".//item", namespaces):
     link = item.find("link", namespaces).text    # 記事のURL
     title = item.find("title", namespaces).text  # タイトル
-    date = item.find("dc:date", namespaces).text # 公開日
+    date = item.find("dc:date", namespaces).text # 公開日 (ISO8601)
     cursor.execute("INSERT OR IGNORE INTO record (link,title,date) VALUES (?,?,?)", (link, title, date))
 
 # 日付順で上位10を残して削除
@@ -94,17 +94,16 @@ row = cursor.fetchone()
 if row is not None:
     link = row[0]
     title = row[1]
-    message = f"【山行記録】{title}\n{link}" # 🔖 投稿メッセージ
+    message = f"【山行記録】{title}\n{link}" # NOTE: 投稿メッセージ
     print(message)
     if post:
         try:
             response = client.create_tweet(text=message)
+            post_id = response.data["id"]
+            print(f"投稿成功: {post_id}")
+            cursor.execute("UPDATE record SET post_id=? WHERE link=?", (post_id, link))
         except Exception as e:
             print(f"投稿エラー: {e}")
-            sys.exit(1)
-        post_id = response.data["id"]
-        print(f"投稿成功: {post_id}")
-        cursor.execute("UPDATE record SET post_id=? WHERE link=?", (post_id, link))
 
 connection.commit()
 connection.close()
