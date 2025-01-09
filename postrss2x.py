@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# RSS 2.0からX(Twetter)に記事を自動投稿する
+# RSS から X (Twetter) に記事を自動投稿する
 
 import os
 from email.utils import parsedate_to_datetime
@@ -77,15 +77,15 @@ for item in root.findall(".//item", namespaces):
     cursor.execute("INSERT OR IGNORE INTO record (link,title,date) VALUES (?,?,?)", (link, title, date))
     connection.commit()
 
-# 日付順で上位10を残して削除
+# 日付順で上位 MAX_RECORDS 件を残して削除
 cursor.execute("""
 DELETE FROM record WHERE link NOT IN (
     SELECT link
     FROM record
     ORDER BY date DESC
-    LIMIT 10
+    LIMIT ?
 )
-""")
+""", (config.MAX_RECORDS,))
 connection.commit()
 
 # 記事を全て投稿済にする
@@ -99,10 +99,9 @@ if disp:
     for link, title, date, post_id in cursor.fetchall():
         print(date, link, title, f"({post_id})")
 
-# 未投稿で最も古い記録を取得
-cursor.execute("SELECT link,title FROM record WHERE post_id<0 ORDER BY date ASC LIMIT 1")
-row = cursor.fetchone()
-if row is not None:
+# 未投稿で最も古い記録から MAX_POSTS 件を取得
+cursor.execute("SELECT link,title FROM record WHERE post_id<0 ORDER BY date ASC LIMIT ?", (config.MAX_POSTS,))
+for row in cursor.fetchall():
     message = config.MESSAGE.format(link=row[0], title=row[1])
     print(message) # for debug
     if post:
