@@ -2,7 +2,7 @@
 Automatically post articles from RSS to X (Twitter)
 
 ## 概要
-RSS からウェブサイトの更新情報を取得し、X（Twetter）に自動投稿するプログラム。RSS 1.0 と RSS 2.0 に対応。起動毎に、未投稿で公開日が最も古い情報を1件投稿する。
+RSS からウェブサイトの更新情報を取得し、X（Twetter）に自動投稿するプログラム。RSS 1.0 と RSS 2.0 に対応。cron で起動して、定期的に投稿する用途を想定している。起動毎に、未投稿で公開日が最も古い情報から設定した件数まで投稿する。
 
 ## インストール方法
 次のプログラムとモジュールが必要。
@@ -28,8 +28,10 @@ $ pip install tweepy
 
 投稿メッセージは、`config.py`の下記の箇所のテンプレートから作成されるので、適宜、変更する。`{title}`は記事のタイトル、`{link}`は記事のURLに置き換えられる。
 ```python
-MESSAGE = "【新着情報】{title}\n{link}"
+MESSAGE = "Updates: {title}\n{link}"
 ```
+
+`config.py`の`MAX_RECORDS`はデータベースに保持される新着情報の最大数、`MAX_POSTS`は最大投稿数を指定する。これらの値は、RSSから読み込まれる新規の情報数`N`に対し、`N`の変動も考慮した上で、`MAX_RECORDS > N - MAX_POSTS`が常に成り立つよう、十分に大きな値を設定する。
 
 ## 利用方法
 次のようにコマンドを実行する。
