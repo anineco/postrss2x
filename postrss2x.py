@@ -4,6 +4,7 @@
 # RSS 2.0からX(Twetter)に記事を自動投稿する
 
 import os
+from email.utils import parsedate_to_datetime
 import sqlite3
 import sys
 import xml.etree.ElementTree as ET
@@ -51,6 +52,7 @@ CREATE TABLE IF NOT EXISTS record (
     post_id INTEGER DEFAULT -1  -- 投稿ID
 )
 """)
+connection.commit()
 
 # RSSを取得
 response = requests.get(config.RSS_URL)
@@ -60,13 +62,20 @@ if not response.status_code == 200:
 
 # RSSを解析して、記事情報をデータベースに保存
 root = ET.fromstring(response.content)
-namespaces = { "dc": "http://purl.org/dc/elements/1.1/" }
-
+namespaces = { "dc": "http://purl.org/dc/elements/1.1/"}
+version = root.get("version")
+if not version == "2.0":
+    # RSS 1.0
+    namespaces[""] = "http://purl.org/rss/1.0/"
 for item in root.findall(".//item", namespaces):
-    link = item.find("link", namespaces).text    # 記事のURL
-    title = item.find("title", namespaces).text  # タイトル
-    date = item.find("dc:date", namespaces).text # 公開日 (ISO8601)
+    link = item.find("link", namespaces).text   # 記事のURL
+    title = item.find("title", namespaces).text # タイトル
+    if version == "2.0" and (p := item.find("pubDate", namespaces)) is not None:
+        date = parsedate_to_datetime(p.text).isoformat()
+    else:
+        date = item.find("dc:date", namespaces).text # 公開日 (ISO8601)
     cursor.execute("INSERT OR IGNORE INTO record (link,title,date) VALUES (?,?,?)", (link, title, date))
+    connection.commit()
 
 # 日付順で上位10を残して削除
 cursor.execute("""
@@ -77,10 +86,12 @@ DELETE FROM record WHERE link NOT IN (
     LIMIT 10
 )
 """)
+connection.commit()
 
 # 記事を全て投稿済にする
 if mark:
     cursor.execute("UPDATE record SET post_id=0 WHERE post_id<0")
+    connection.commit()
 
 if disp:
     # 一覧表示
@@ -92,19 +103,18 @@ if disp:
 cursor.execute("SELECT link,title FROM record WHERE post_id<0 ORDER BY date ASC LIMIT 1")
 row = cursor.fetchone()
 if row is not None:
-    link = row[0]
-    title = row[1]
-    message = f"【山行記録】{title}\n{link}" # NOTE: 投稿メッセージ
-    print(message)
+    message = config.MESSAGE.format(link=row[0], title=row[1])
+    print(message) # for debug
     if post:
         try:
             response = client.create_tweet(text=message)
-            post_id = response.data["id"]
-            print(f"投稿成功: {post_id}")
-            cursor.execute("UPDATE record SET post_id=? WHERE link=?", (post_id, link))
         except Exception as e:
             print(f"投稿エラー: {e}")
+            sys.exit(1)
+        post_id = response.data["id"]
+        print(f"投稿成功: {post_id}")
+        cursor.execute("UPDATE record SET post_id=? WHERE link=?", (post_id, link))
+        connection.commit()
 
-connection.commit()
 connection.close()
 #__END__
