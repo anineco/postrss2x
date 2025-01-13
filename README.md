@@ -1,7 +1,7 @@
 # postrss2x
 Automatically post articles from RSS to X (Twitter)
 
-[日本語 (Japanese)](/README.ja.md)
+[日本語 (Japanese)](blob/main/README.jp.md)
 
 ## Overview
 This program fetches updates from RSS feeds and automatically posts them to X (formerly Twitter). It supports RSS 1.0 and RSS 2.0. Designed to be executed periodically via cron, the program posts updates from the oldest unpublished entry up to a specified number of posts during each execution.
