@@ -46,10 +46,10 @@ connection = sqlite3.connect(config.DATABASE)
 cursor = connection.cursor()
 cursor.execute("""
 CREATE TABLE IF NOT EXISTS record (
-    link TEXT PRIMARY KEY, -- 記事のURL
-    title TEXT NOT NULL,   -- タイトル
-    date TEXT NOT NULL,    -- 公開日（ISO8601）
-    post_id INTEGER DEFAULT -1  -- 投稿ID
+    link TEXT PRIMARY KEY, -- URL of the article
+    title TEXT NOT NULL,   -- title
+    date TEXT NOT NULL,    -- publication date (ISO8601)
+    post_id INTEGER DEFAULT -1  -- post ID
 )
 """)
 connection.commit()
@@ -101,8 +101,8 @@ if disp:
 
 # find articles not yet posted ordered by publication date
 cursor.execute("SELECT link,title FROM record WHERE post_id<0 ORDER BY date ASC LIMIT ?", (config.MAX_POSTS,))
-for row in cursor.fetchall():
-    message = config.MESSAGE.format(link=row[0], title=row[1])
+for link, title in cursor.fetchall():
+    message = config.MESSAGE.format(link=link, title=title)
     print(message) # for debug
     if post:
         try:
